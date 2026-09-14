@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dialyse Monitor</title>
+    <title>Tasker - Dialyse Monitor</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 600px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: auto; }
+        .container { max-width: 700px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: auto; }
         h2 { color: #0056b3; border-bottom: 2px solid #eee; padding-bottom: 10px; }
         .tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
         .tab-btn { padding: 10px 15px; border: none; background: #ddd; cursor: pointer; border-radius: 4px; font-weight: bold; }
@@ -16,10 +16,19 @@
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
         input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        button.submit-btn { background: #28a745; color: white; border: none; padding: 10px 15px; width: 100%; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button.submit-btn { background: #28a745; color: white; border: none; padding: 10px 15px; width: 100%; border-radius: 4px; font-size: 16px; cursor: pointer; margin-top: 10px; }
         button.submit-btn:hover { background: #218838; }
+        button.cancel-btn { background: #6c757d; color: white; border: none; padding: 8px 15px; width: 100%; border-radius: 4px; cursor: pointer; margin-top: 5px; }
         .status { margin-top: 15px; font-weight: bold; text-align: center; }
-        /* Kleurcoderingen op basis van wensen */
+        
+        /* Tabellen voor overzicht */
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .action-btns button { padding: 4px 8px; margin-right: 4px; cursor: pointer; border: none; border-radius: 3px; }
+        .btn-edit { background: #ffc107; color: black; }
+        .btn-del { background: #dc3545; color: white; }
+
         .uf-red { background-color: #f8d7da !important; color: #721c24; }
         .uf-orange { background-color: #fff3cd !important; color: #856404; }
         .uf-green { background-color: #d4edda !important; color: #155724; }
@@ -30,18 +39,18 @@
 <div class="container">
     <h2>Tasker Monitor</h2>
     
-    <!-- Navigatie knoppen overeenkomstig je tabbladen -->
     <div class="tabs">
-        <button class="tab-btn active" onclick="openTab(event, 'Dialyse')">Dialyse</button>
-        <button class="tab-btn" onclick="openTab(event, 'Bloeddruk')">Bloeddruk</button>
-        <button class="tab-btn" onclick="openTab(event, 'Vocht')">Vocht</button>
-        <button class="tab-btn" onclick="openTab(event, 'Taxi')">Taxi</button>
+        <button class="tab-btn active" onclick="switchTab(event, 'Dialyse')">Dialyse</button>
+        <button class="tab-btn" onclick="switchTab(event, 'Bloeddruk')">Bloeddruk</button>
+        <button class="tab-btn" onclick="switchTab(event, 'Vocht')">Vocht</button>
+        <button class="tab-btn" onclick="switchTab(event, 'Taxi')">Taxi</button>
     </div>
 
-    <!-- DIALYSE FORMULIER -->
+    <!-- DIALYSE -->
     <div id="Dialyse" class="form-section active">
-        <h3>Dialyse Registratie</h3>
-        <form id="formDialyse" onsubmit="verzenden(event, 'Dialyse')">
+        <h3 id="d_form_title">Nieuwe Dialyse Toevoegen</h3>
+        <form id="formDialyse" onsubmit="beheerGegevens(event, 'Dialyse')">
+            <input type="hidden" id="d_rowindex">
             <div class="form-group"><label>Begin datum/tijd:</label><input type="datetime-local" id="d_begin" required></div>
             <div class="form-group"><label>Eind datum/tijd:</label><input type="datetime-local" id="d_eind" required></div>
             <div class="form-group"><label>Dialyse duur:</label><input type="text" id="d_duur"></div>
@@ -54,95 +63,143 @@
             <div class="form-group"><label>Gewicht na (kg):</label><input type="number" step="0.1" id="d_gewichtna"></div>
             <div class="form-group"><label>Werkelijke UF:</label><input type="text" id="d_werkuf"></div>
             <div class="form-group"><label>Opmerkingen:</label><textarea id="d_opm"></textarea></div>
-            <button type="submit" class="submit-btn">Opslaan in Dialyse</button>
+            <button type="submit" id="d_submit_btn" class="submit-btn">Opslaan</button>
+            <button type="button" id="d_cancel_btn" class="cancel-btn" style="display:none;" onclick="resetFormulier('Dialyse')">Annuleren</button>
         </form>
+        <h3>Opgeslagen Dialyses</h3>
+        <div style="overflow-x:auto;"><table id="table_Dialyse"><thead><tr><th>Begin</th><th>Eind</th><th>Gewicht</th><th>UF</th><th>Acties</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <!-- BLOEDDRUK FORMULIER -->
+    <!-- BLOEDDRUK -->
     <div id="Bloeddruk" class="form-section">
-        <h3>Bloeddruk Registratie</h3>
-        <form id="formBloeddruk" onsubmit="verzenden(event, 'Bloeddruk')">
+        <h3 id="b_form_title">Nieuwe Bloeddruk Toevoegen</h3>
+        <form id="formBloeddruk" onsubmit="beheerGegevens(event, 'Bloeddruk')">
+            <input type="hidden" id="b_rowindex">
             <div class="form-group"><label>Datum/Tijd:</label><input type="datetime-local" id="b_tijd" required></div>
             <div class="form-group"><label>Bovendruk:</label><input type="number" id="b_boven" required></div>
             <div class="form-group"><label>Onderdruk:</label><input type="number" id="b_onder" required></div>
             <div class="form-group"><label>Hartslag:</label><input type="number" id="b_hartslag"></div>
             <div class="form-group"><label>Opmerking:</label><textarea id="b_opm"></textarea></div>
-            <button type="submit" class="submit-btn">Opslaan in Bloeddruk</button>
+            <button type="submit" id="b_submit_btn" class="submit-btn">Opslaan</button>
+            <button type="button" id="b_cancel_btn" class="cancel-btn" style="display:none;" onclick="resetFormulier('Bloeddruk')">Annuleren</button>
         </form>
+        <h3>Opgeslagen Bloeddruk</h3>
+        <div style="overflow-x:auto;"><table id="table_Bloeddruk"><thead><tr><th>Tijd</th><th>Boven</th><th>Onder</th><th>Hartslag</th><th>Acties</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <!-- VOCHT FORMULIER -->
+    <!-- VOCHT -->
     <div id="Vocht" class="form-section">
-        <h3>Vocht Registratie</h3>
-        <form id="formVocht" onsubmit="verzenden(event, 'Vocht')">
+        <h3 id="v_form_title">Nieuw Vocht Toevoegen</h3>
+        <form id="formVocht" onsubmit="beheerGegevens(event, 'Vocht')">
+            <input type="hidden" id="v_rowindex">
             <div class="form-group"><label>Datum/Tijd:</label><input type="datetime-local" id="v_tijd" required></div>
-            <div class="form-group"><label>Wat:</label><input type="text" id="v_wat" placeholder="Bijv. Koffie, Soep"></div>
+            <div class="form-group"><label>Wat:</label><input type="text" id="v_wat"></div>
             <div class="form-group"><label>Hoeveel (ml):</label><input type="number" id="v_hoeveel" required></div>
             <div class="form-group"><label>Totaal van de dag:</label><input type="text" id="v_totaal"></div>
             <div class="form-group"><label>Opmerking:</label><input type="text" id="v_opm"></div>
             <div class="form-group"><label>Limiet:</label><input type="number" id="v_limiet"></div>
-            <button type="submit" class="submit-btn">Opslaan in Vocht</button>
+            <button type="submit" id="v_submit_btn" class="submit-btn">Opslaan</button>
+            <button type="button" id="v_cancel_btn" class="cancel-btn" style="display:none;" onclick="resetFormulier('Vocht')">Annuleren</button>
         </form>
+        <h3>Opgeslagen Vocht</h3>
+        <div style="overflow-x:auto;"><table id="table_Vocht"><thead><tr><th>Tijd</th><th>Wat</th><th>Hoeveel</th><th>Totaal</th><th>Acties</th></tr></thead><tbody></tbody></table></div>
     </div>
 
-    <!-- TAXI FORMULIER -->
+    <!-- TAXI -->
     <div id="Taxi" class="form-section">
-        <h3>Taxi Afspraak</h3>
-        <form id="formTaxi" onsubmit="verzenden(event, 'Taxi')">
+        <h3>Nieuwe Taxi Afspraak</h3>
+        <form id="formTaxi" onsubmit="beheerGegevens(event, 'Taxi')">
+            <input type="hidden" id="t_rowindex">
             <div class="form-group"><label>Afgesproken tijd:</label><input type="datetime-local" id="t_afgesproken"></div>
             <div class="form-group"><label>Start tijd:</label><input type="datetime-local" id="t_start"></div>
             <div class="form-group"><label>Eind tijd:</label><input type="datetime-local" id="t_eind"></div>
             <div class="form-group"><label>Bedrijf:</label><input type="text" id="t_bedrijf"></div>
             <div class="form-group"><label>Opmerking:</label><textarea id="t_opm"></textarea></div>
-            <button type="submit" class="submit-btn">Opslaan in Taxi</button>
+            <button type="submit" id="t_submit_btn" class="submit-btn">Opslaan</button>
+            <button type="button" id="t_cancel_btn" class="cancel-btn" style="display:none;" onclick="resetFormulier('Taxi')">Annuleren</button>
         </form>
+        <h3>Opgeslagen Taxi Afspraken</h3>
+        <div style="overflow-x:auto;"><table id="table_Taxi"><thead><tr><th>Afgesproken</th><th>Bedrijf</th><th>Start</th><th>Eind</th><th>Acties</th></tr></thead><tbody></tbody></table></div>
     </div>
 
     <div id="statusMsg" class="status"></div>
 </div>
 
 <script>
-    // Jouw Web App URL van Google Apps Script hieronder plakken tussen de quotes:
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxyI7yqi5RoFY6vMM17xScWKuh7_feqnAwIvHLi3t5PMR1ps7hVTpuCXcfMOubqYxANdA/exec";
+    const WEB_APP_URL = "HIER_JE_GOOGLE_APPS_SCRIPT_URL_PLAKKEN";
 
-    function openTab(evt, tabName) {
+    let huidigeTab = 'Dialyse';
+
+    function switchTab(evt, tabName) {
         let sections = document.getElementsByClassName("form-section");
         for (let s of sections) s.classList.remove("active");
         let buttons = document.getElementsByClassName("tab-btn");
         for (let b of buttons) b.classList.remove("active");
         document.getElementById(tabName).classList.add("active");
         evt.currentTarget.classList.add("active");
+        huidigeTab = tabName;
+        laadData(tabName);
     }
 
-    // Automatische UF berekening (pre weight - dry weight + 0.3) + kleurcodering
     function berekenUF() {
         let gewichtVoor = parseFloat(document.getElementById('d_gewichtvoor').value);
         let streefGewicht = parseFloat(document.getElementById('d_streef').value);
         let ufInput = document.getElementById('d_uf');
-
         if (!isNaN(gewichtVoor) && !isNaN(streefGewicht)) {
             let uf = (gewichtVoor - streefGewicht + 0.3).toFixed(2);
             ufInput.value = uf;
-
-            // Kleurcodering toepassen
             ufInput.className = "";
-            if (uf >= 4.5) {
-                ufInput.classList.add('uf-red');
-            } else if (uf >= 4.0) {
-                ufInput.classList.add('uf-orange');
-            } else {
-                ufInput.classList.add('uf-green');
-            }
+            if (uf >= 4.5) ufInput.classList.add('uf-red');
+            else if (uf >= 4.0) ufInput.classList.add('uf-orange');
+            else ufInput.classList.add('uf-green');
         }
     }
 
-    function verzenden(event, tab) {
+    function laadData(tab) {
+        fetch(WEB_APP_URL + "?tab=" + tab)
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success') {
+                vulTabel(tab, res.data);
+            }
+        });
+    }
+
+    function vulTabel(tab, data) {
+        let tbody = document.querySelector("#table_" + tab + " tbody");
+        tbody.innerHTML = "";
+        data.forEach(item => {
+            let tr = document.createElement("tr");
+            let vals = item.values;
+            let rowIdx = item.rowIndex;
+
+            if (tab === 'Dialyse') {
+                tr.innerHTML = `<td>${vals[0]}</td><td>${vals[1]}</td><td>${vals[4]}</td><td>${vals[5]}</td>
+                    <td class="action-btns"><button class="btn-edit" onclick='bewerkDialyse(${rowIdx}, ${JSON.stringify(vals)})'>Bewerk</button><button class="btn-del" onclick="verwijderRij('${tab}', ${rowIdx})">Verwijder</button></td>`;
+            } else if (tab === 'Bloeddruk') {
+                tr.innerHTML = `<td>${vals[0]}</td><td>${vals[1]}</td><td>${vals[2]}</td><td>${vals[3]}</td>
+                    <td class="action-btns"><button class="btn-edit" onclick='bewerkBloeddruk(${rowIdx}, ${JSON.stringify(vals)})'>Bewerk</button><button class="btn-del" onclick="verwijderRij('${tab}', ${rowIdx})">Verwijder</button></td>`;
+            } else if (tab === 'Vocht') {
+                tr.innerHTML = `<td>${vals[0]}</td><td>${vals[1]}</td><td>${vals[2]}</td><td>${vals[3]}</td>
+                    <td class="action-btns"><button class="btn-edit" onclick='bewerkVocht(${rowIdx}, ${JSON.stringify(vals)})'>Bewerk</button><button class="btn-del" onclick="verwijderRij('${tab}', ${rowIdx})">Verwijder</button></td>`;
+            } else if (tab === 'Taxi') {
+                tr.innerHTML = `<td>${vals[0]}</td><td>${vals[3]}</td><td>${vals[1]}</td><td>${vals[2]}</td>
+                    <td class="action-btns"><button class="btn-edit" onclick='bewerkTaxi(${rowIdx}, ${JSON.stringify(vals)})'>Bewerk</button><button class="btn-del" onclick="verwijderRij('${tab}', ${rowIdx})">Verwijder</button></td>`;
+            }
+            tbody.appendChild(tr);
+        });
+    }
+
+    function beheerGegevens(event, tab) {
         event.preventDefault();
         let statusDiv = document.getElementById('statusMsg');
         statusDiv.style.color = "blue";
-        statusDiv.innerText = "Gegevens verzenden...";
+        statusDiv.innerText = "Bezig met opslaan...";
 
-        let data = { tab: tab };
+        let rowindex = document.getElementById(tab[0].toLowerCase() + '_rowindex').value;
+        let actie = rowindex ? "bewerken" : "toevoegen";
+
+        let data = { tab: tab, actie: actie, rowIndex: rowindex ? parseInt(rowindex) : null };
 
         if (tab === 'Dialyse') {
             data.beginDatumTijd = document.getElementById('d_begin').value;
@@ -176,28 +233,104 @@
             data.opmerking = document.getElementById('t_opm').value;
         }
 
-        fetch(WEB_APP_URL, {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
+        fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(data) })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success') {
                 statusDiv.style.color = "green";
-                statusDiv.innerText = "Succesvol opgeslagen in " + tab + "!";
-                event.target.reset();
-                if(tab === 'Dialyse') document.getElementById('d_streef').value = "109"; // behoud standaard streef gewicht
+                statusDiv.innerText = "Succesvol opgeslagen!";
+                resetFormulier(tab);
+                laadData(tab);
             } else {
                 statusDiv.style.color = "red";
-                statusDiv.innerText = "Fout: " + result.message;
+                statusDiv.innerText = "Fout: " + res.message;
             }
-        })
-        .catch(error => {
-            statusDiv.style.color = "red";
-            statusDiv.innerText = "Netwerkfout bij verzenden.";
-            console.error(error);
         });
     }
+
+    function verwijderRij(tab, rowIndex) {
+        if (!confirm("Weet je zeker dat je dit item wilt verwijderen?")) return;
+        
+        let data = { tab: tab, actie: "verwijderen", rowIndex: rowIndex };
+        fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(data) })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === 'success') {
+                document.getElementById('statusMsg').style.color = "green";
+                document.getElementById('statusMsg').innerText = "Verwijderd!";
+                laadData(tab);
+            }
+        });
+    }
+
+    function bewerkDialyse(rowIdx, v) {
+        document.getElementById('d_rowindex').value = rowIdx;
+        document.getElementById('d_begin').value = v[0];
+        document.getElementById('d_eind').value = v[1];
+        document.getElementById('d_duur').value = v[2];
+        document.getElementById('d_dagnacht').value = v[3];
+        document.getElementById('d_gewichtvoor').value = v[4];
+        document.getElementById('d_uf').value = v[5];
+        document.getElementById('d_gewichtna').value = v[6];
+        document.getElementById('d_werkuf').value = v[7];
+        document.getElementById('d_opm').value = v[8];
+        document.getElementById('d_streef').value = v[9] || 109;
+        document.getElementById('d_form_title').innerText = "Dialyse Bewerken (Rij " + rowIdx + ")";
+        document.getElementById('d_submit_btn').innerText = "Wijzigingen Opslaan";
+        document.getElementById('d_cancel_btn').style.display = "block";
+    }
+
+    function bewerkBloeddruk(rowIdx, v) {
+        document.getElementById('b_rowindex').value = rowIdx;
+        document.getElementById('b_tijd').value = v[0];
+        document.getElementById('b_boven').value = v[1];
+        document.getElementById('b_onder').value = v[2];
+        document.getElementById('b_hartslag').value = v[3];
+        document.getElementById('b_opm').value = v[4];
+        document.getElementById('b_form_title').innerText = "Bloeddruk Bewerken";
+        document.getElementById('b_submit_btn').innerText = "Wijzigingen Opslaan";
+        document.getElementById('b_cancel_btn').style.display = "block";
+    }
+
+    function bewerkVocht(rowIdx, v) {
+        document.getElementById('v_rowindex').value = rowIdx;
+        document.getElementById('v_tijd').value = v[0];
+        document.getElementById('v_wat').value = v[1];
+        document.getElementById('v_hoeveel').value = v[2];
+        document.getElementById('v_totaal').value = v[3];
+        document.getElementById('v_opm').value = v[4];
+        document.getElementById('v_limiet').value = v[5];
+        document.getElementById('v_form_title').innerText = "Vocht Bewerken";
+        document.getElementById('v_submit_btn').innerText = "Wijzigingen Opslaan";
+        document.getElementById('v_cancel_btn').style.display = "block";
+    }
+
+    function bewerkTaxi(rowIdx, v) {
+        document.getElementById('t_rowindex').value = rowIdx;
+        document.getElementById('t_afgesproken').value = v[0];
+        document.getElementById('t_start').value = v[1];
+        document.getElementById('t_eind').value = v[2];
+        document.getElementById('t_bedrijf').value = v[3];
+        document.getElementById('t_opm').value = v[4];
+        document.getElementById('t_form_title').innerText = "Taxi Bewerken";
+        document.getElementById('t_submit_btn').innerText = "Wijzigingen Opslaan";
+        document.getElementById('t_cancel_btn').style.display = "block";
+    }
+
+    function resetFormulier(tab) {
+        let prefix = tab[0].toLowerCase();
+        document.getElementById('form' + tab).reset();
+        document.getElementById(prefix + '_rowindex').value = "";
+        document.getElementById(prefix + '_form_title').innerText = "Nieuw " + tab + " Toevoegen";
+        document.getElementById(prefix + '_submit_btn').innerText = "Opslaan";
+        document.getElementById(prefix + '_cancel_btn').style.display = "none";
+        if (tab === 'Dialyse') document.getElementById('d_streef').value = "109";
+    }
+
+    // Laad direct de data van het eerste tabblad bij openen
+    window.onload = function() {
+        laadData('Dialyse');
+    };
 </script>
 
 </body>
