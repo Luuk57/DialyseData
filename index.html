@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasker - Dialyse Monitor</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 600px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin: auto; }
+        h2 { color: #0056b3; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .tabs { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 15px; border: none; background: #ddd; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .tab-btn.active { background: #0056b3; color: white; }
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        button.submit-btn { background: #28a745; color: white; border: none; padding: 10px 15px; width: 100%; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button.submit-btn:hover { background: #218838; }
+        .status { margin-top: 15px; font-weight: bold; text-align: center; }
+        /* Kleurcoderingen op basis van wensen */
+        .uf-red { background-color: #f8d7da !important; color: #721c24; }
+        .uf-orange { background-color: #fff3cd !important; color: #856404; }
+        .uf-green { background-color: #d4edda !important; color: #155724; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Tasker Monitor</h2>
+    
+    <!-- Navigatie knoppen overeenkomstig je tabbladen -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="openTab(event, 'Dialyse')">Dialyse</button>
+        <button class="tab-btn" onclick="openTab(event, 'Bloeddruk')">Bloeddruk</button>
+        <button class="tab-btn" onclick="openTab(event, 'Vocht')">Vocht</button>
+        <button class="tab-btn" onclick="openTab(event, 'Taxi')">Taxi</button>
+    </div>
+
+    <!-- DIALYSE FORMULIER -->
+    <div id="Dialyse" class="form-section active">
+        <h3>Dialyse Registratie</h3>
+        <form id="formDialyse" onsubmit="verzenden(event, 'Dialyse')">
+            <div class="form-group"><label>Begin datum/tijd:</label><input type="datetime-local" id="d_begin" required></div>
+            <div class="form-group"><label>Eind datum/tijd:</label><input type="datetime-local" id="d_eind" required></div>
+            <div class="form-group"><label>Dialyse duur:</label><input type="text" id="d_duur"></div>
+            <div class="form-group"><label>Dag/Nacht:</label>
+                <select id="d_dagnacht"><option value="Dag">Dag</option><option value="Nacht">Nacht</option></select>
+            </div>
+            <div class="form-group"><label>Gewicht voor (kg):</label><input type="number" step="0.1" id="d_gewichtvoor" oninput="berekenUF()" required></div>
+            <div class="form-group"><label>Streef gewicht (kg):</label><input type="number" step="0.1" id="d_streef" value="109" oninput="berekenUF()"></div>
+            <div class="form-group"><label>UF Advies:</label><input type="text" id="d_uf" readonly></div>
+            <div class="form-group"><label>Gewicht na (kg):</label><input type="number" step="0.1" id="d_gewichtna"></div>
+            <div class="form-group"><label>Werkelijke UF:</label><input type="text" id="d_werkuf"></div>
+            <div class="form-group"><label>Opmerkingen:</label><textarea id="d_opm"></textarea></div>
+            <button type="submit" class="submit-btn">Opslaan in Dialyse</button>
+        </form>
+    </div>
+
+    <!-- BLOEDDRUK FORMULIER -->
+    <div id="Bloeddruk" class="form-section">
+        <h3>Bloeddruk Registratie</h3>
+        <form id="formBloeddruk" onsubmit="verzenden(event, 'Bloeddruk')">
+            <div class="form-group"><label>Datum/Tijd:</label><input type="datetime-local" id="b_tijd" required></div>
+            <div class="form-group"><label>Bovendruk:</label><input type="number" id="b_boven" required></div>
+            <div class="form-group"><label>Onderdruk:</label><input type="number" id="b_onder" required></div>
+            <div class="form-group"><label>Hartslag:</label><input type="number" id="b_hartslag"></div>
+            <div class="form-group"><label>Opmerking:</label><textarea id="b_opm"></textarea></div>
+            <button type="submit" class="submit-btn">Opslaan in Bloeddruk</button>
+        </form>
+    </div>
+
+    <!-- VOCHT FORMULIER -->
+    <div id="Vocht" class="form-section">
+        <h3>Vocht Registratie</h3>
+        <form id="formVocht" onsubmit="verzenden(event, 'Vocht')">
+            <div class="form-group"><label>Datum/Tijd:</label><input type="datetime-local" id="v_tijd" required></div>
+            <div class="form-group"><label>Wat:</label><input type="text" id="v_wat" placeholder="Bijv. Koffie, Soep"></div>
+            <div class="form-group"><label>Hoeveel (ml):</label><input type="number" id="v_hoeveel" required></div>
+            <div class="form-group"><label>Totaal van de dag:</label><input type="text" id="v_totaal"></div>
+            <div class="form-group"><label>Opmerking:</label><input type="text" id="v_opm"></div>
+            <div class="form-group"><label>Limiet:</label><input type="number" id="v_limiet"></div>
+            <button type="submit" class="submit-btn">Opslaan in Vocht</button>
+        </form>
+    </div>
+
+    <!-- TAXI FORMULIER -->
+    <div id="Taxi" class="form-section">
+        <h3>Taxi Afspraak</h3>
+        <form id="formTaxi" onsubmit="verzenden(event, 'Taxi')">
+            <div class="form-group"><label>Afgesproken tijd:</label><input type="datetime-local" id="t_afgesproken"></div>
+            <div class="form-group"><label>Start tijd:</label><input type="datetime-local" id="t_start"></div>
+            <div class="form-group"><label>Eind tijd:</label><input type="datetime-local" id="t_eind"></div>
+            <div class="form-group"><label>Bedrijf:</label><input type="text" id="t_bedrijf"></div>
+            <div class="form-group"><label>Opmerking:</label><textarea id="t_opm"></textarea></div>
+            <button type="submit" class="submit-btn">Opslaan in Taxi</button>
+        </form>
+    </div>
+
+    <div id="statusMsg" class="status"></div>
+</div>
+
+<script>
+    // Jouw Web App URL van Google Apps Script hieronder plakken tussen de quotes:
+    const WEB_APP_URL = "HIER_JE_GOOGLE_APPS_SCRIPT_URL_PLAKKEN";
+
+    function openTab(evt, tabName) {
+        let sections = document.getElementsByClassName("form-section");
+        for (let s of sections) s.classList.remove("active");
+        let buttons = document.getElementsByClassName("tab-btn");
+        for (let b of buttons) b.classList.remove("active");
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+
+    // Automatische UF berekening (pre weight - dry weight + 0.3) + kleurcodering
+    function berekenUF() {
+        let gewichtVoor = parseFloat(document.getElementById('d_gewichtvoor').value);
+        let streefGewicht = parseFloat(document.getElementById('d_streef').value);
+        let ufInput = document.getElementById('d_uf');
+
+        if (!isNaN(gewichtVoor) && !isNaN(streefGewicht)) {
+            let uf = (gewichtVoor - streefGewicht + 0.3).toFixed(2);
+            ufInput.value = uf;
+
+            // Kleurcodering toepassen
+            ufInput.className = "";
+            if (uf >= 4.5) {
+                ufInput.classList.add('uf-red');
+            } else if (uf >= 4.0) {
+                ufInput.classList.add('uf-orange');
+            } else {
+                ufInput.classList.add('uf-green');
+            }
+        }
+    }
+
+    function verzenden(event, tab) {
+        event.preventDefault();
+        let statusDiv = document.getElementById('statusMsg');
+        statusDiv.style.color = "blue";
+        statusDiv.innerText = "Gegevens verzenden...";
+
+        let data = { tab: tab };
+
+        if (tab === 'Dialyse') {
+            data.beginDatumTijd = document.getElementById('d_begin').value;
+            data.eindDatumTijd = document.getElementById('d_eind').value;
+            data.dialyseDuur = document.getElementById('d_duur').value;
+            data.dagNacht = document.getElementById('d_dagnacht').value;
+            data.gewichtVoor = document.getElementById('d_gewichtvoor').value;
+            data.uf = document.getElementById('d_uf').value;
+            data.gewichtNa = document.getElementById('d_gewichtna').value;
+            data.werkelijkeUf = document.getElementById('d_werkuf').value;
+            data.opmerkingen = document.getElementById('d_opm').value;
+            data.streefGewicht = document.getElementById('d_streef').value;
+        } else if (tab === 'Bloeddruk') {
+            data.datumTijd = document.getElementById('b_tijd').value;
+            data.bovendruk = document.getElementById('b_boven').value;
+            data.onderdruk = document.getElementById('b_onder').value;
+            data.hartslag = document.getElementById('b_hartslag').value;
+            data.opmerking = document.getElementById('b_opm').value;
+        } else if (tab === 'Vocht') {
+            data.datumTijd = document.getElementById('v_tijd').value;
+            data.wat = document.getElementById('v_wat').value;
+            data.hoeveel = document.getElementById('v_hoeveel').value;
+            data.totaalVandeDag = document.getElementById('v_totaal').value;
+            data.opmerking = document.getElementById('v_opm').value;
+            data.limiet = document.getElementById('v_limiet').value;
+        } else if (tab === 'Taxi') {
+            data.afgesprokenTijd = document.getElementById('t_afgesproken').value;
+            data.startTijd = document.getElementById('t_start').value;
+            data.eindTijd = document.getElementById('t_eind').value;
+            data.bedrijf = document.getElementById('t_bedrijf').value;
+            data.opmerking = document.getElementById('t_opm').value;
+        }
+
+        fetch(WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                statusDiv.style.color = "green";
+                statusDiv.innerText = "Succesvol opgeslagen in " + tab + "!";
+                event.target.reset();
+                if(tab === 'Dialyse') document.getElementById('d_streef').value = "109"; // behoud standaard streef gewicht
+            } else {
+                statusDiv.style.color = "red";
+                statusDiv.innerText = "Fout: " + result.message;
+            }
+        })
+        .catch(error => {
+            statusDiv.style.color = "red";
+            statusDiv.innerText = "Netwerkfout bij verzenden.";
+            console.error(error);
+        });
+    }
+</script>
+
+</body>
+</html>
